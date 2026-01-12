@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "interview.fullname" . }}
+  labels:
+    {{- include "interview.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    worker_processes 1;
+    error_log /dev/stderr debug;
+    pid /var/run/nginx.pid;
+
+    events {
+      worker_connections 10240;
+    }
+
+    http {
+      resolver kube-dns.kube-system.svc.cluster.local 8.8.8.8 ipv6=off valid=5s;
+
+      log_format custom escape=default
+        '$remote_addr - $remote_user [$time_local] '
+        '"$request" $status $body_bytes_sent '
+        '"$http_referer" "$http_user_agent" "$upstream_addr" '
+        '$upstream_connect_time $upstream_header_time $upstream_response_time';
+
+      server {
+        listen 18080;
+        server_name nginx-status;
+        access_log off;
+        location /nginx_status {
+          stub_status on;
+        }
+        location / {
+          return 404;
+        }
+      }
+
+      server {
+        listen 7001;
+        access_log off;
+        server_name ping-interview;
+
+        location = /ping {
+          return 200 'pong';
+        }
+
+        location / {
+          return 404 'destination unknown';
+        }
+      }
+
+      include /etc/nginx/conf.d/*.conf;
+    }
+
+  default.conf.template: |
+    server {
+      listen 8080 default_server;
+      server_name interview;
+
+      location = / {
+        # If you ask for exactly "/"
+        access_log off;
+        return 200 'interview';
+      }
+
+      location = /my-ip {
+        proxy_pass https://ifconfig.me/;
+      }
+
+      location = /ping {
+        access_log off;
+        return 200 'pong';
+      }
+
+      {{- range .Values.upstreams }}
+      location {{ .location }}/ {
+        access_log /dev/stdout custom;
+        rewrite_log on;
+
+        set $destination_url {{ .url }};
+
+        # Require TLS v1.2 or v1.3
+        proxy_ssl_protocols TLSv1.2 TLSv1.3;
+
+        proxy_buffering off;
+
+        # Rewrite URI to exclude "{{ .location }}" and add urlPath if it exists
+        rewrite ^{{ .location }}/(.*)$ {{ if .urlPath }}/{{ .urlPath }}{{ end }}/$1 break;
+
+        # Pass it on.  Must use a variable here; without it we get a 504 Gateway Timeout
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $destination_url;
+        proxy_pass https://$destination_url;
+      }
+      {{- end }}
+
+      location / {
+        access_log off;
+        return 404 'destination unknown';
+      }
+    }
