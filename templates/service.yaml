@@ -1,12 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-service
+  name: {{ include "interview.fullname" . }}
+  labels:
+    {{- include "interview.labels" . | nindent 4 }}
 spec:
-  selector:
-    app: nginx-deployment
   type: ClusterIP
   ports:
-    - protocol: TCP
-      port: 81
-      targetPort: 81
+    - port: 8081
+      protocol: TCP
+      targetPort: 8081
+  selector:
+    app.kubernetes.io/name: {{ include "interview.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+

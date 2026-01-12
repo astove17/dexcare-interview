@@ -1,19 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: {{ include "interview.fullname" . }}
+  labels:
+    {{- include "interview.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
-      app: nginx
-  replicas: 2
+      app.kubernetes.io/name: {{ include "interview.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: nginx
+        app.kubernetes.io/name: {{ include "interview.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
-      - name: nginx
+      - name: {{ .Chart.Name }}
         image: nginx:1.14.2
         ports:
-        - containerPort: 80
+        - containerPort: 8080
+          protocol: TCP
