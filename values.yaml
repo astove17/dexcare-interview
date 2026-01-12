@@ -1,0 +1,31 @@
+replicaCount: 1
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+
+podAnnotations: {}
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  maxReplicas: 4
+  minReplicas: 1
+  targetCPUUtilizationPercentage: 80
+
+upstreams:
+- default: true
+  location: "/example"
+  name: "example"
+  url: "example.org"
