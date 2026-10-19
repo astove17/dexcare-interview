@@ -1,37 +1,19 @@
-# Kubernetes Interview
+# SRE Technical Interview
 
-## Getting Started
+This repo contains a simplified Kubernetes/Helm debugging exercise. For the full EKS-based interview with a real cluster, see the [infra-interview](https://github.com/DexCare/infra-interview) repo.
 
-### 1. Open a Killercoda playground
+## Lightweight Version (no cluster required)
 
-Go to: **https://killercoda.com/playgrounds/scenario/kubernetes**
+If you just need a quick screen without spinning up infrastructure, candidates can debug the Helm chart locally using `helm template`:
 
-This gives you a browser-based terminal with a running Kubernetes cluster and `kubectl` pre-installed.
-
-### 2. Clone this repo in the Killercoda terminal
-
-### 4. Your task
-
-Deploy the chart and fix the two issues you find.
-
----
-
-*Think out loud.*
-- Deploy chart from `./resources/chart/` to your namespace of choice (or default)
-- Identify the two issues the chart has.
-- Fix both issues by editing chart templates
-- Verify service endpoints are populated and working
-
-## Files and Directories
-
-```
-kubernetes-interview/
-├── README.md                    # This file
-└── resources/                   # Helm charts
-    └── chart/            # Chart with issues to debug
+```bash
+git clone <this-repo>
+cd resources/chart
+helm template myrelease .
 ```
 
-**Available tools**:
-- `helm` command-line tool
-- `kubectl` command-line tool
-- Access to Kubernetes documentation and Helm documentation
+The rendered output contains two bugs for the candidate to identify and fix.
+
+## Full EKS Version
+
+See the `infra-interview` repo. It deploys a throwaway EKS cluster in sandbox with more complex troubleshooting scenarios and is the primary interview platform for SRE candidates.
