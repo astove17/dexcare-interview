@@ -1,19 +1,36 @@
-# Default values for chart chart
-replicaCount: 2
+replicaCount: 1
 
 image:
   repository: nginx
-  tag: latest
   pullPolicy: IfNotPresent
+  tag: "1.19.0"
 
-service:
-  type: ClusterIP
-  port: 80
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+
+podAnnotations: {}
 
 resources:
-  requests:
-    cpu: 50m
-    memory: 64Mi
   limits:
     cpu: 100m
     memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  maxReplicas: 4
+  minReplicas: 1
+  targetCPUUtilizationPercentage: 80
+
+upstreams:
+- default: true
+  location: "/example"
+  name: "example"
+  url: "example.org"

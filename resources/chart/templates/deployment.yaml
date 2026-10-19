@@ -1,26 +1,95 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "chart.fullname" . }}
+  name: {{ include "interview.fullname" . }}
   labels:
-    {{- include "chart.labels" . | nindent 4 }}
+    {{- include "interview.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   selector:
     matchLabels:
-      {{- include "chart.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: {{ include "interview.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
+      annotations:
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
-        {{- include "chart.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/name: {{ include "interview.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "interview.serviceAccountName" . }}
       containers:
       - name: {{ .Chart.Name }}
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: nginx:1.19.0
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
-        - name: http
-          containerPort: 80
+        - containerPort: 8080
           protocol: TCP
+        - name: http-ping
+          containerPort: 7001
+          protocol: TCP
+        - containerPort: 18080
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+            - NET_RAW
+          readOnlyRootFilesystem: false
+        volumeMounts:
+        - name: cache-volume
+          mountPath: /var/cache/nginx
+        - name: pid-volume
+          mountPath: /var/run
+        - name: config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: config
+          mountPath: /etc/nginx/templates/default.conf.template
+          subPath: default.conf.template
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http-ping
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http-ping
         resources:
-          {{- toYaml .Values.resources | nindent 10 }}
+          {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsGroup: 10014
+        runAsNonRoot: true
+        runAsUser: 10014
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: cache-volume
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: {{ include "interview.fullname" . }}
+      - name: pid-volume
+        emptyDir: {}
